@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+  <!-- ═══════════════════════════════════════════════
+       META & SEO
+  ═══════════════════════════════════════════════ -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+  <title>Beam Analysis – Natural Language Solver</title>
+  <meta name="description"
+        content="AI-powered beam structural analysis tool. Describe beam problems in plain English and instantly get reactions, shear forces, bending moments, and deflection diagrams." />
+
+  <!-- Open Graph (LinkedIn / Twitter previews) -->
+  <meta property="og:title"       content="Beam Analysis – Natural Language Solver" />
+  <meta property="og:description" content="AI-powered structural analysis. Natural language input → instant engineering diagrams." />
+  <meta property="og:type"        content="website" />
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap"
+        rel="stylesheet" />
+
+  <!-- ═══════════════════════════════════════════════
+       STYLES
+  ═══════════════════════════════════════════════ -->
+  <style>
+
+    /* ── 1. Tokens ─────────────────────────────────── */
+    :root {
+      --bg:           #07090f;
+      --surface:      #0f1623;
+      --surface-alt:  #141e2e;
+      --border:       rgba(96, 165, 250, 0.14);
+      --border-hover: rgba(96, 165, 250, 0.45);
+      --accent:       #3b82f6;
+      --accent-end:   #06b6d4;
+      --glow:         rgba(59, 130, 246, 0.30);
+      --text:         #f0f4ff;
+      --muted:        #8fa3bf;
+      --tag-bg:       rgba(59, 130, 246, 0.10);
+      --radius-sm:    8px;
+      --radius:       14px;
+      --radius-lg:    20px;
+      --transition:   0.22s ease;
+      --max-w:        1080px;
+    }
+
+    /* ── 2. Reset ──────────────────────────────────── */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    html { scroll-behavior: smooth; }
+
+    /* ── 3. Base ───────────────────────────────────── */
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      line-height: 1.7;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* ── 4. Animated background grid ──────────────── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(59,130,246,0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(59,130,246,0.035) 1px, transparent 1px);
+      background-size: 52px 52px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── 5. Ambient glow orbs ──────────────────────── */
+    .orb {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(90px);
+      opacity: 0.20;
+      pointer-events: none;
+      z-index: 0;
+      animation: orb-drift 14s ease-in-out infinite alternate;
+    }
+    .orb-a {
+      width: 560px; height: 560px;
+      background: radial-gradient(circle, #3b82f6 0%, transparent 65%);
+      top: -160px; left: -160px;
+    }
+    .orb-b {
+      width: 420px; height: 420px;
+      background: radial-gradient(circle, #06b6d4 0%, transparent 65%);
+      bottom: -80px; right: -100px;
+      animation-delay: -7s;
+    }
+
+    @keyframes orb-drift {
+      from { transform: translate(0, 0)   scale(1.00); }
+      to   { transform: translate(28px, 22px) scale(1.06); }
+    }
+
+    /* ── 6. Layout wrapper ─────────────────────────── */
+    .page {
+      position: relative;
+      z-index: 1;
+      max-width: var(--max-w);
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    /* ════════════════════════════════════════════════
+       HERO
+    ════════════════════════════════════════════════ */
+    .hero {
+      text-align: center;
+      padding: 72px 0 48px;
+    }
+
+    /* Live badge */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 15px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--tag-bg);
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: var(--accent-end);
+      margin-bottom: 26px;
+      animation: slide-down 0.55s ease both;
+    }
+    .badge-dot {
+      width: 6px; height: 6px;
+      background: var(--accent-end);
+      border-radius: 50%;
+      box-shadow: 0 0 7px var(--accent-end);
+      animation: blink 2.2s infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.35} }
+
+    /* Title */
+    .hero-title {
+      font-size: clamp(2rem, 5.5vw, 3.8rem);
+      font-weight: 800;
+      line-height: 1.13;
+      letter-spacing: -0.035em;
+      background: linear-gradient(140deg, #e8eeff 25%, #93c5fd 60%, #22d3ee 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 18px;
+      animation: slide-down 0.6s 0.08s ease both;
+    }
+
+    /* Description */
+    .hero-desc {
+      font-size: clamp(0.95rem, 2vw, 1.13rem);
+      color: var(--muted);
+      max-width: 620px;
+      margin: 0 auto 10px;
+      animation: slide-down 0.6s 0.15s ease both;
+    }
+
+    /* Author */
+    .hero-author {
+      font-size: 0.92rem;
+      color: var(--accent);
+      font-weight: 600;
+      margin-bottom: 30px;
+      animation: slide-down 0.6s 0.20s ease both;
+    }
+    .hero-author em {
+      font-style: normal;
+      color: var(--muted);
+      font-weight: 400;
+    }
+
+    /* Tech tags */
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 9px;
+      justify-content: center;
+      margin-bottom: 36px;
+      animation: slide-down 0.6s 0.25s ease both;
+    }
+    .tag {
+      padding: 4px 13px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--tag-bg);
+      font-size: 0.76rem;
+      font-weight: 500;
+      color: var(--muted);
+      font-family: 'JetBrains Mono', monospace;
+      transition: border-color var(--transition), color var(--transition);
+      cursor: default;
+    }
+    .tag:hover { border-color: var(--accent); color: var(--text); }
+
+    /* CTA buttons */
+    .cta-row {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+      animation: slide-down 0.6s 0.30s ease both;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 11px 24px;
+      border-radius: 999px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      font-family: 'Inter', sans-serif;
+      text-decoration: none;
+      cursor: pointer;
+      border: none;
+      outline: none;
+      transition: transform var(--transition), box-shadow var(--transition),
+                  background var(--transition), border-color var(--transition),
+                  color var(--transition);
+    }
+
+    /* Primary — filled gradient */
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent-end));
+      color: #fff;
+      box-shadow: 0 4px 22px var(--glow);
+    }
+    .btn-primary:hover,
+    .btn-primary:focus-visible {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px var(--glow);
+    }
+
+    /* Secondary — outlined */
+    .btn-outline {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-outline:hover,
+    .btn-outline:focus-visible {
+      transform: translateY(-2px);
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--tag-bg);
+    }
+
+    /* Icon inside button */
+    .btn svg {
+      width: 17px; height: 17px;
+      fill: currentColor;
+      flex-shrink: 0;
+    }
+
+    /* ════════════════════════════════════════════════
+       VIDEO PLAYER — primary feature
+    ════════════════════════════════════════════════ */
+    .video-section {
+      margin-bottom: 68px;
+      animation: slide-up 0.75s 0.38s ease both;
+    }
+
+    /* Outer card */
+    .video-card {
+      position: relative;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow:
+        0 0 0 1px rgba(96,165,250,0.06),
+        0 20px 60px rgba(0, 0, 0, 0.55),
+        0 0 80px rgba(59,130,246,0.06);
+    }
+
+    /* Top glow line */
+    .video-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg,
+        transparent 0%,
+        var(--accent)     35%,
+        var(--accent-end) 65%,
+        transparent 100%);
+      z-index: 3;
+    }
+
+    /* Title bar — macOS-style dots */
+    .video-titlebar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 18px;
+      background: var(--surface-alt);
+      border-bottom: 1px solid var(--border);
+      user-select: none;
+    }
+    .tl-dot {
+      width: 12px; height: 12px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .tl-red    { background: #ff5f57; }
+    .tl-yellow { background: #ffbd2e; }
+    .tl-green  { background: #28ca41; }
+    .tl-label {
+      margin: 0 auto;
+      font-size: 0.78rem;
+      color: var(--muted);
+      font-family: 'JetBrains Mono', monospace;
+      letter-spacing: 0.02em;
+    }
+
+    /* ── THE VIDEO ELEMENT ─────────────────────────── */
+    /*
+     * IMPORTANT: The video element below is NOT modified
+     * from its functional behaviour. Only layout/sizing
+     * CSS is applied. All attributes (controls, playsinline,
+     * preload) remain exactly as specified in requirements.
+     */
+    .video-wrapper {
+      position: relative;
+      width: 100%;
+      background: #000;
+      /* Aspect ratio box — falls back gracefully on older browsers */
+      aspect-ratio: 16 / 9;
+      overflow: hidden;
+    }
+
+    /* Fallback for browsers that don't support aspect-ratio */
+    @supports not (aspect-ratio: 16 / 9) {
+      .video-wrapper {
+        padding-top: 56.25%; /* 9/16 = 56.25% */
+      }
+      .video-wrapper video {
+        position: absolute;
+        top: 0; left: 0;
+        width: 100%;
+        height: 100%;
+      }
+    }
+
+    video#demo-video {
+      display: block;
+      width: 100%;
+      height: 100%;
+      background: #000;
+      /* Do not override: controls, playsinline, preload are set in HTML */
+    }
+
+    /* Subtle hover state on card — does NOT affect video controls */
+    .video-card:hover {
+      border-color: var(--border-hover);
+      box-shadow:
+        0 0 0 1px rgba(96,165,250,0.10),
+        0 28px 72px rgba(0,0,0,0.60),
+        0 0 100px rgba(59,130,246,0.09);
+      transition: box-shadow 0.35s ease, border-color 0.35s ease;
+    }
+
+    /* Video caption strip */
+    .video-caption {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 11px 18px;
+      background: var(--surface-alt);
+      border-top: 1px solid var(--border);
+      font-size: 0.78rem;
+      color: var(--muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .vc-left  { display: flex; align-items: center; gap: 7px; }
+    .vc-dot   { width: 7px; height: 7px; border-radius: 50%; background: var(--accent-end); box-shadow: 0 0 6px var(--accent-end); animation: blink 2.2s infinite; }
+
+    /* ════════════════════════════════════════════════
+       FEATURES GRID
+    ════════════════════════════════════════════════ */
+    .features-section { margin-bottom: 68px; }
+
+    .section-heading {
+      font-size: 1.4rem;
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 30px;
+      color: var(--text);
+    }
+    .section-heading span {
+      background: linear-gradient(135deg, var(--accent), var(--accent-end));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 18px;
+    }
+
+    .feat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 26px 22px;
+      position: relative;
+      overflow: hidden;
+      transition: transform var(--transition), border-color var(--transition),
+                  box-shadow var(--transition);
+    }
+
+    /* Gradient overlay on hover */
+    .feat-card::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(59,130,246,0.08) 0%, transparent 55%);
+      opacity: 0;
+      transition: opacity 0.30s;
+    }
+    .feat-card:hover {
+      transform: translateY(-3px);
+      border-color: rgba(59,130,246,0.35);
+      box-shadow: 0 10px 36px rgba(0,0,0,0.38);
+    }
+    .feat-card:hover::after { opacity: 1; }
+
+    .feat-icon { font-size: 1.9rem; margin-bottom: 12px; display: block; line-height: 1; }
+    .feat-card h3 { font-size: 0.96rem; font-weight: 700; margin-bottom: 6px; }
+    .feat-card p  { font-size: 0.83rem; color: var(--muted); line-height: 1.62; }
+
+    /* ════════════════════════════════════════════════
+       HOW IT WORKS — steps
+    ════════════════════════════════════════════════ */
+    .steps-section { margin-bottom: 76px; }
+
+    .steps-row {
+      display: flex;
+      position: relative;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+
+    /* Connector line — only when steps are in a single row */
+    .steps-row::before {
+      content: '';
+      position: absolute;
+      top: 26px;
+      left: calc(12.5% + 2px);
+      right: calc(12.5% + 2px);
+      height: 2px;
+      background: linear-gradient(90deg, var(--accent), var(--accent-end));
+      opacity: 0.30;
+      pointer-events: none;
+    }
+
+    .step {
+      flex: 1 1 140px;
+      text-align: center;
+      padding: 0 10px;
+    }
+    .step-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 52px; height: 52px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent-end));
+      font-size: 1rem;
+      font-weight: 800;
+      font-family: 'JetBrains Mono', monospace;
+      margin-bottom: 14px;
+      box-shadow: 0 4px 18px var(--glow);
+      position: relative;
+      z-index: 1;
+    }
+    .step h4 { font-size: 0.88rem; font-weight: 700; margin-bottom: 5px; }
+    .step p   { font-size: 0.77rem; color: var(--muted); line-height: 1.55; }
+
+    /* ════════════════════════════════════════════════
+       FOOTER
+    ════════════════════════════════════════════════ */
+    footer {
+      position: relative;
+      z-index: 1;
+      border-top: 1px solid var(--border);
+      text-align: center;
+      padding: 32px 20px;
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+    footer a { color: var(--accent); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    /* ── Animations ────────────────────────────────── */
+    @keyframes slide-down {
+      from { opacity: 0; transform: translateY(-16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes slide-up {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Responsive ────────────────────────────────── */
+    @media (max-width: 700px) {
+      .hero { padding: 52px 0 36px; }
+      .steps-row::before { display: none; }
+      .step { flex: 0 0 50%; }
+    }
+
+    @media (max-width: 420px) {
+      .step { flex: 0 0 100%; }
+      .video-caption { justify-content: center; }
+    }
+
+    /* ── Accessibility: respect reduced motion ─────── */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+    }
+
+    /* ── Focus ring for keyboard nav ───────────────── */
+    .btn:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 3px;
+    }
+
+  </style>
+</head>
+
+<body>
+
+  <!-- Background decorations (purely visual, aria-hidden) -->
+  <div class="orb orb-a" aria-hidden="true"></div>
+  <div class="orb orb-b" aria-hidden="true"></div>
+
+  <!-- ════════════════════════════════════════════════
+       HERO
+  ════════════════════════════════════════════════ -->
+  <header>
+    <div class="page">
+      <section class="hero" aria-labelledby="hero-title">
+
+        <div class="badge" aria-label="Project type">
+          <span class="badge-dot" aria-hidden="true"></span>
+          Engineering Project
+        </div>
+
+        <h1 id="hero-title" class="hero-title">
+          Beam Analysis<br />Natural Language Solver
+        </h1>
+
+        <p class="hero-desc">
+          Describe any beam problem in plain English and get instant structural results —
+          reactions, shear force &amp; bending moment diagrams, and deflection curves.
+        </p>
+
+        <p class="hero-author">
+          <em>by </em>VENKATA SUBRAMANIAN M
+        </p>
+
+        <!-- ✏️  EDIT: Add/remove tags to match your tech stack -->
+        <div class="tags" role="list" aria-label="Technologies used">
+          <span class="tag" role="listitem">Python</span>
+          <span class="tag" role="listitem">NLP</span>
+          <span class="tag" role="listitem">Structural Analysis</span>
+          <span class="tag" role="listitem">AI</span>
+          <span class="tag" role="listitem">Civil Engineering</span>
+          <span class="tag" role="listitem">Matplotlib</span>
+        </div>
+
+        <div class="cta-row">
+
+
+
+          <!-- ✏️  EDIT: Replace href with your LinkedIn profile URL -->
+          <a id="btn-linkedin"
+             href="https://www.linkedin.com/in/venkata-subramanian-m-412353201/"
+             class="btn btn-outline"
+             target="_blank"
+             rel="noopener noreferrer"
+             aria-label="View LinkedIn profile (opens in new tab)">
+            <!-- LinkedIn icon -->
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037
+                -1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414
+                v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37
+                4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065
+                2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452z
+                M22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24
+                1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774
+                23.2 0 22.222 0h.003z"/>
+            </svg>
+            LinkedIn
+          </a>
+
+        </div>
+      </section>
+    </div>
+  </header>
+
+  <main>
+    <div class="page">
+
+      <!-- ════════════════════════════════════════════
+           VIDEO PLAYER
+           NOTE: Video element attributes (controls,
+           playsinline, preload) are NOT modified.
+           Only responsive layout CSS is applied.
+      ════════════════════════════════════════════ -->
+      <section class="video-section" aria-label="Project demo video">
+
+        <div class="video-card">
+
+          <!-- Decorative title bar -->
+          <div class="video-titlebar" aria-hidden="true">
+            <span class="tl-dot tl-red"></span>
+            <span class="tl-dot tl-yellow"></span>
+            <span class="tl-dot tl-green"></span>
+            <span class="tl-label">Beam Analysis – Natural Language Solver &middot; Live Demo</span>
+          </div>
+
+          <!-- Responsive video wrapper -->
+          <div class="video-wrapper">
+            <!--
+              VIDEO FILE SETUP
+              ─────────────────────────────────────────
+              1. Place your video in the SAME folder as index.html
+              2. RECOMMENDED: export/convert to MP4 (H.264 + AAC)
+                 → works on Chrome, Edge, Firefox, Safari, Android, iOS
+              3. Rename file with NO spaces (GitHub Pages URL-encodes spaces)
+                 e.g.:  Beam-Analysis-NL.mp4   ✅
+                        Beam Analysis-NL.mp4   ⚠️ (URL encodes to %20)
+
+              ✏️  EDIT: Update the src values below to match your filename(s).
+            -->
+            <video
+              id="demo-video"
+              controls
+              playsinline
+              preload="metadata"
+            >
+              <!-- Source 1: MP4 (H.264 + AAC) — broadest compatibility -->
+              <source src="Beam-Analysis-NL.mp4" type="video/mp4" />
+
+              <!-- Source 2: M4V fallback — Safari-compatible -->
+              <source src="Beam%20Analysis-NL.m4v" type="video/mp4" />
+
+              <!-- Fallback message for very old browsers -->
+              <p>
+                Your browser does not support HTML5 video.
+                <a href="Beam-Analysis-NL.mp4" download>Download the video</a>.
+              </p>
+            </video>
+          </div>
+
+          <!-- Caption strip below video -->
+          <div class="video-caption">
+            <span class="vc-left">
+              <span class="vc-dot" aria-hidden="true"></span>
+              Demo &mdash; Natural Language to Structural Diagrams
+            </span>
+            <span>Use controls to play &bull; Full-screen supported</span>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ════════════════════════════════════════════
+           FEATURES
+      ════════════════════════════════════════════ -->
+      <section class="features-section" aria-labelledby="features-heading">
+        <h2 id="features-heading" class="section-heading">
+          What makes it <span>special</span>
+        </h2>
+
+        <div class="features-grid">
+
+          <article class="feat-card">
+            <span class="feat-icon" aria-hidden="true">&#128483;&#65039;</span>
+            <h3>Natural Language Input</h3>
+            <p>Describe your beam problem in plain English — no rigid syntax, no learning curve.</p>
+          </article>
+
+          <article class="feat-card">
+            <span class="feat-icon" aria-hidden="true">&#9889;</span>
+            <h3>Instant Results</h3>
+            <p>Reactions, SFD, BMD, and deflection curves computed and rendered in seconds.</p>
+          </article>
+
+          <article class="feat-card">
+            <span class="feat-icon" aria-hidden="true">&#128208;</span>
+            <h3>Engineering Accuracy</h3>
+            <p>Simply supported, cantilever, and continuous beams — all handled with rigorous mechanics.</p>
+          </article>
+
+          <article class="feat-card">
+            <span class="feat-icon" aria-hidden="true">&#128202;</span>
+            <h3>Professional Diagrams</h3>
+            <p>Publication-quality Matplotlib output with labeled axes and correct sign conventions.</p>
+          </article>
+
+          <article class="feat-card">
+            <span class="feat-icon" aria-hidden="true">&#129302;</span>
+            <h3>AI-Powered Parsing</h3>
+            <p>Intelligently extracts load types, spans, and support conditions from free-form text.</p>
+          </article>
+
+          <article class="feat-card">
+            <span class="feat-icon" aria-hidden="true">&#127758;</span>
+            <h3>Cross-Platform</h3>
+            <p>Runs anywhere Python runs — desktop, server, or cloud. Zero proprietary software.</p>
+          </article>
+
+        </div>
+      </section>
+
+      <!-- ════════════════════════════════════════════
+           HOW IT WORKS
+      ════════════════════════════════════════════ -->
+      <section class="steps-section" aria-labelledby="steps-heading">
+        <h2 id="steps-heading" class="section-heading">
+          How it <span>works</span>
+        </h2>
+
+        <div class="steps-row" role="list">
+
+          <div class="step" role="listitem">
+            <div class="step-num" aria-label="Step 1">01</div>
+            <h4>Describe</h4>
+            <p>Type your beam problem in natural language</p>
+          </div>
+
+          <div class="step" role="listitem">
+            <div class="step-num" aria-label="Step 2">02</div>
+            <h4>Parse</h4>
+            <p>NLP engine extracts spans, loads &amp; supports</p>
+          </div>
+
+          <div class="step" role="listitem">
+            <div class="step-num" aria-label="Step 3">03</div>
+            <h4>Solve</h4>
+            <p>Structural solver computes reactions &amp; internal forces</p>
+          </div>
+
+          <div class="step" role="listitem">
+            <div class="step-num" aria-label="Step 4">04</div>
+            <h4>Visualize</h4>
+            <p>Diagrams rendered with Matplotlib instantly</p>
+          </div>
+
+        </div>
+      </section>
+
+    </div><!-- /.page -->
+  </main>
+
+  <!-- ════════════════════════════════════════════════
+       FOOTER
+  ════════════════════════════════════════════════ -->
+  <footer>
+    <div class="page">
+       <p>
+        Built with Python &middot; NLP &middot; Structural Mechanics
+        &ensp;&bull;&ensp;
+        &copy; 2026 VENKATA SUBRAMANIAN M
+      </p>
+    </div>
+  </footer>
+
+  <!-- ════════════════════════════════════════════════
+       VANILLA JS — minimal, no dependencies
+  ════════════════════════════════════════════════ -->
+  <script>
+    (function () {
+      'use strict';
+
+      /* ── Intersection Observer: animate cards on scroll ── */
+      if ('IntersectionObserver' in window) {
+        var cards = document.querySelectorAll('.feat-card, .step');
+
+        var observer = new IntersectionObserver(function (entries) {
+          entries.forEach(function (entry) {
+            if (entry.isIntersecting) {
+              entry.target.style.opacity = '1';
+              entry.target.style.transform = 'translateY(0)';
+              observer.unobserve(entry.target);
+            }
+          });
+        }, { threshold: 0.12 });
+
+        cards.forEach(function (card, i) {
+          /* Start hidden slightly below */
+          card.style.opacity = '0';
+          card.style.transform = 'translateY(22px)';
+          card.style.transition = 'opacity 0.45s ease ' + (i * 0.06) + 's, transform 0.45s ease ' + (i * 0.06) + 's';
+          observer.observe(card);
+        });
+      }
+
+      /* ── Video: graceful error handling ── */
+      var video = document.getElementById('demo-video');
+      if (video) {
+        video.addEventListener('error', function () {
+          var wrapper = video.closest('.video-wrapper');
+          if (!wrapper) return;
+
+          /* Show a friendly fallback UI without breaking layout */
+          var fallback = document.createElement('div');
+          fallback.setAttribute('role', 'alert');
+          fallback.style.cssText = [
+            'display:flex', 'align-items:center', 'justify-content:center',
+            'flex-direction:column', 'gap:12px', 'padding:48px 24px',
+            'text-align:center', 'color:#8fa3bf', 'font-family:Inter,sans-serif'
+          ].join(';');
+
+          fallback.innerHTML =
+            '<span style="font-size:2.4rem">&#127909;</span>' +
+            '<strong style="color:#f0f4ff;font-size:1rem">Video not found</strong>' +
+            '<span style="font-size:0.83rem">Place <code style="background:rgba(59,130,246,0.15);padding:2px 7px;border-radius:5px;font-family:JetBrains Mono,monospace">Beam-Analysis-NL.mp4</code> in the same folder as <code style="background:rgba(59,130,246,0.15);padding:2px 7px;border-radius:5px;font-family:JetBrains Mono,monospace">index.html</code></span>';
+
+          wrapper.replaceChild(fallback, video);
+        });
+      }
+
+    })();
+  </script>
+
+</body>
+</html>
